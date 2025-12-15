@@ -2,6 +2,7 @@
 *
 *	ESP (Extra Sensory Perception) implementation for xash3d-fwgs
 *	Client-side entity visualization with bounding boxes
+*	Fixed compilation errors - 2025-12-16
 *
 *	Copyright (c) 1996-2002, Valve LLC. All rights reserved.
 *
