@@ -19,11 +19,47 @@
 #include "hud.h"
 #include "cl_util.h"
 #include "const.h"
+#include "mathlib.h"
 
 static cvar_t* sv_cheats = nullptr;
 static cvar_t* esp_enabled = nullptr;
 static cvar_t* esp_alpha = nullptr;
 static cvar_t* esp_box = nullptr;
+
+// Simple world-to-screen projection function
+bool WorldToScreen(const vec3_t worldPos, vec3_t screenPos)
+{
+    cl_entity_t* player = gEngfuncs.GetLocalPlayer();
+    if (!player)
+        return false;
+
+    // Get player view angles and origin
+    vec3_t playerOrigin = player->origin;
+    vec3_t playerAngles = player->angles;
+
+    // Calculate relative position
+    vec3_t relativePos;
+    VectorSubtract(worldPos, playerOrigin, relativePos);
+
+    // Transform to view space
+    vec3_t viewForward, viewRight, viewUp;
+    AngleVectors(playerAngles, viewForward, viewRight, viewUp);
+
+    float dotForward = DotProduct(relativePos, viewForward);
+    float dotRight = DotProduct(relativePos, viewRight);
+    float dotUp = DotProduct(relativePos, viewUp);
+
+    // Check if point is in front of camera
+    if (dotForward <= 0)
+        return false;
+
+    // Project to screen
+    screenPos[0] = (1.0f + (dotRight / dotForward)) * ScreenWidth * 0.5f;
+    screenPos[1] = (1.0f - (dotUp / dotForward)) * ScreenHeight * 0.5f;
+    screenPos[2] = dotForward; // Store depth for visibility checking
+
+    return true;
+}
 
 void ESP_Init()
 {
@@ -48,8 +84,8 @@ void ESP_Redraw(float time)
     if (!player)
         return;
 
-    Vector player_origin = player->origin;
-    Vector player_angles = player->angles;
+    vec3_t player_origin = player->origin;
+    vec3_t player_angles = player->angles;
 
     int r = 255, g = 0, b = 0; // Default red color for enemies
     int alpha = (int)esp_alpha->value;
@@ -69,28 +105,44 @@ void ESP_Redraw(float time)
         if (ent->curstate.messagenum != gEngfuncs.GetMaxClients())
             continue;
 
-        Vector ent_origin = ent->origin;
-        Vector ent_mins = ent->mins;
-        Vector ent_maxs = ent->maxs;
+        vec3_t ent_origin = ent->origin;
+        vec3_t ent_mins = ent->curstate.mins;
+        vec3_t ent_maxs = ent->curstate.maxs;
 
         // Calculate screen position
-        Vector screen_pos;
+        vec3_t screen_pos;
         if (!WorldToScreen(ent_origin, screen_pos))
             continue;
 
         // Calculate bounding box corners
-        Vector corners[8];
-        corners[0] = ent_origin + Vector(ent_mins.x, ent_mins.y, ent_mins.z);
-        corners[1] = ent_origin + Vector(ent_maxs.x, ent_mins.y, ent_mins.z);
-        corners[2] = ent_origin + Vector(ent_maxs.x, ent_maxs.y, ent_mins.z);
-        corners[3] = ent_origin + Vector(ent_mins.x, ent_maxs.y, ent_mins.z);
-        corners[4] = ent_origin + Vector(ent_mins.x, ent_mins.y, ent_maxs.z);
-        corners[5] = ent_origin + Vector(ent_maxs.x, ent_mins.y, ent_maxs.z);
-        corners[6] = ent_origin + Vector(ent_maxs.x, ent_maxs.y, ent_maxs.z);
-        corners[7] = ent_origin + Vector(ent_mins.x, ent_maxs.y, ent_maxs.z);
+        vec3_t corners[8];
+        corners[0][0] = ent_origin[0] + ent_mins[0];
+        corners[0][1] = ent_origin[1] + ent_mins[1];
+        corners[0][2] = ent_origin[2] + ent_mins[2];
+        corners[1][0] = ent_origin[0] + ent_maxs[0];
+        corners[1][1] = ent_origin[1] + ent_mins[1];
+        corners[1][2] = ent_origin[2] + ent_mins[2];
+        corners[2][0] = ent_origin[0] + ent_maxs[0];
+        corners[2][1] = ent_origin[1] + ent_maxs[1];
+        corners[2][2] = ent_origin[2] + ent_mins[2];
+        corners[3][0] = ent_origin[0] + ent_mins[0];
+        corners[3][1] = ent_origin[1] + ent_maxs[1];
+        corners[3][2] = ent_origin[2] + ent_mins[2];
+        corners[4][0] = ent_origin[0] + ent_mins[0];
+        corners[4][1] = ent_origin[1] + ent_mins[1];
+        corners[4][2] = ent_origin[2] + ent_maxs[2];
+        corners[5][0] = ent_origin[0] + ent_maxs[0];
+        corners[5][1] = ent_origin[1] + ent_mins[1];
+        corners[5][2] = ent_origin[2] + ent_maxs[2];
+        corners[6][0] = ent_origin[0] + ent_maxs[0];
+        corners[6][1] = ent_origin[1] + ent_maxs[1];
+        corners[6][2] = ent_origin[2] + ent_maxs[2];
+        corners[7][0] = ent_origin[0] + ent_mins[0];
+        corners[7][1] = ent_origin[1] + ent_maxs[1];
+        corners[7][2] = ent_origin[2] + ent_maxs[2];
 
         // Transform corners to screen space
-        Vector screen_corners[8];
+        vec3_t screen_corners[8];
         int visible_corners = 0;
         for (int j = 0; j < 8; j++)
         {
@@ -103,23 +155,23 @@ void ESP_Redraw(float time)
         // Only draw if at least some corners are visible
         if (visible_corners >= 4)
         {
+            // Calculate min/max screen coordinates
+            int min_x = (int)screen_corners[0][0];
+            int min_y = (int)screen_corners[0][1];
+            int max_x = (int)screen_corners[0][0];
+            int max_y = (int)screen_corners[0][1];
+
+            for (int j = 1; j < 8; j++)
+            {
+                if (screen_corners[j][0] < min_x) min_x = (int)screen_corners[j][0];
+                if (screen_corners[j][0] > max_x) max_x = (int)screen_corners[j][0];
+                if (screen_corners[j][1] < min_y) min_y = (int)screen_corners[j][1];
+                if (screen_corners[j][1] > max_y) max_y = (int)screen_corners[j][1];
+            }
+
             // Draw bounding box if enabled
             if (esp_box->value > 0.0f)
             {
-                // Calculate min/max screen coordinates
-                int min_x = (int)screen_corners[0].x;
-                int min_y = (int)screen_corners[0].y;
-                int max_x = (int)screen_corners[0].x;
-                int max_y = (int)screen_corners[0].y;
-
-                for (int j = 1; j < 8; j++)
-                {
-                    if (screen_corners[j].x < min_x) min_x = (int)screen_corners[j].x;
-                    if (screen_corners[j].x > max_x) max_x = (int)screen_corners[j].x;
-                    if (screen_corners[j].y < min_y) min_y = (int)screen_corners[j].y;
-                    if (screen_corners[j].y > max_y) max_y = (int)screen_corners[j].y;
-                }
-
                 // Draw the bounding box
                 gEngfuncs.pfnFillRGBABlend(min_x, min_y, max_x - min_x, 1, r, g, b, alpha); // Top edge
                 gEngfuncs.pfnFillRGBABlend(min_x, max_y, max_x - min_x, 1, r, g, b, alpha); // Bottom edge
