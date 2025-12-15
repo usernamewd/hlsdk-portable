@@ -28,27 +28,35 @@ static cvar_t* esp_alpha = nullptr;
 static cvar_t* esp_box = nullptr;
 
 // Simple world-to-screen projection function
-bool WorldToScreen(const vec3_t worldPos, vec3_t screenPos)
+bool WorldToScreen(const float* worldPos, float* screenPos)
 {
     cl_entity_t* player = gEngfuncs.GetLocalPlayer();
     if (!player)
         return false;
 
     // Get player view angles and origin
-    vec3_t playerOrigin = player->origin;
-    vec3_t playerAngles = player->angles;
+    float playerOrigin[3];
+    float playerAngles[3];
+    playerOrigin[0] = player->origin[0];
+    playerOrigin[1] = player->origin[1];
+    playerOrigin[2] = player->origin[2];
+    playerAngles[0] = player->angles[0];
+    playerAngles[1] = player->angles[1];
+    playerAngles[2] = player->angles[2];
 
     // Calculate relative position
-    vec3_t relativePos;
-    VectorSubtract(worldPos, playerOrigin, relativePos);
+    float relativePos[3];
+    relativePos[0] = worldPos[0] - playerOrigin[0];
+    relativePos[1] = worldPos[1] - playerOrigin[1];
+    relativePos[2] = worldPos[2] - playerOrigin[2];
 
     // Transform to view space
-    vec3_t viewForward, viewRight, viewUp;
-    AngleVectors(playerAngles, viewForward, viewRight, viewUp);
+    float viewForward[3], viewRight[3], viewUp[3];
+    gEngfuncs.pfnAngleVectors(playerAngles, viewForward, viewRight, viewUp);
 
-    float dotForward = DotProduct(relativePos, viewForward);
-    float dotRight = DotProduct(relativePos, viewRight);
-    float dotUp = DotProduct(relativePos, viewUp);
+    float dotForward = relativePos[0]*viewForward[0] + relativePos[1]*viewForward[1] + relativePos[2]*viewForward[2];
+    float dotRight = relativePos[0]*viewRight[0] + relativePos[1]*viewRight[1] + relativePos[2]*viewRight[2];
+    float dotUp = relativePos[0]*viewUp[0] + relativePos[1]*viewUp[1] + relativePos[2]*viewUp[2];
 
     // Check if point is in front of camera
     if (dotForward <= 0)
@@ -85,8 +93,14 @@ void ESP_Redraw(float time)
     if (!player)
         return;
 
-    vec3_t player_origin = player->origin;
-    vec3_t player_angles = player->angles;
+    float player_origin[3];
+    float player_angles[3];
+    player_origin[0] = player->origin[0];
+    player_origin[1] = player->origin[1];
+    player_origin[2] = player->origin[2];
+    player_angles[0] = player->angles[0];
+    player_angles[1] = player->angles[1];
+    player_angles[2] = player->angles[2];
 
     int r = 255, g = 0, b = 0; // Default red color for enemies
     int alpha = (int)esp_alpha->value;
@@ -106,17 +120,26 @@ void ESP_Redraw(float time)
         if (ent->curstate.messagenum != gEngfuncs.GetMaxClients())
             continue;
 
-        vec3_t ent_origin = ent->origin;
-        vec3_t ent_mins = ent->curstate.mins;
-        vec3_t ent_maxs = ent->curstate.maxs;
+        float ent_origin[3];
+        float ent_mins[3];
+        float ent_maxs[3];
+        ent_origin[0] = ent->origin[0];
+        ent_origin[1] = ent->origin[1];
+        ent_origin[2] = ent->origin[2];
+        ent_mins[0] = ent->curstate.mins[0];
+        ent_mins[1] = ent->curstate.mins[1];
+        ent_mins[2] = ent->curstate.mins[2];
+        ent_maxs[0] = ent->curstate.maxs[0];
+        ent_maxs[1] = ent->curstate.maxs[1];
+        ent_maxs[2] = ent->curstate.maxs[2];
 
         // Calculate screen position
-        vec3_t screen_pos;
+        float screen_pos[3];
         if (!WorldToScreen(ent_origin, screen_pos))
             continue;
 
         // Calculate bounding box corners
-        vec3_t corners[8];
+        float corners[8][3];
         corners[0][0] = ent_origin[0] + ent_mins[0];
         corners[0][1] = ent_origin[1] + ent_mins[1];
         corners[0][2] = ent_origin[2] + ent_mins[2];
@@ -143,7 +166,7 @@ void ESP_Redraw(float time)
         corners[7][2] = ent_origin[2] + ent_maxs[2];
 
         // Transform corners to screen space
-        vec3_t screen_corners[8];
+        float screen_corners[8][3];
         int visible_corners = 0;
         for (int j = 0; j < 8; j++)
         {
