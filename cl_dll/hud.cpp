@@ -473,6 +473,9 @@ void CHud::Init( void )
 	MsgFunc_ResetHUD( 0, 0, NULL );
 	ClientCmd( "richpresence_gamemode\n" );
 	ClientCmd( "richpresence_update\n" );
+
+	// Initialize ESP system
+	ESP_Init();
 }
 
 // CHud destructor

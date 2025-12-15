@@ -92,6 +92,9 @@ void CHud::Think( void )
 	{
 		m_iFOV = gHUD.m_Spectator.GetFOV(); // default_fov->value;
 	}
+
+	// ESP think function for any per-frame updates
+	ESP_Think();
 }
 
 // Redraw
@@ -217,6 +220,9 @@ int CHud::Redraw( float flTime, int intermission )
 		SPR_DrawAdditive( 0, mx, my, NULL );
 	}
 	*/
+
+	// Draw ESP overlay
+	ESP_Redraw( flTime );
 
 	return 1;
 }
