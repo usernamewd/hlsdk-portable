@@ -23,6 +23,7 @@
 #include "com_model.h"
 #include "event_api.h"
 #include "pm_defs.h"
+#include "const.h"
 #include <cstdio>
 #include <cstring>
 #include <cmath>
@@ -437,7 +438,7 @@ void ESP_Init()         { gESP.Init(); }
 void ESP_VidInit()      { gESP.VidInit(); }
 void ESP_Redraw(float t, int intermission) { gESP.Redraw(t, intermission); }
 void ESP_HandleMouse(int mx, int my, bool mouseDown) { gESP.HandleMouseInput(mx, my, mouseDown); }
-void ESP_HandleTouch(int touch_id, int x, int y, bool touch_down) 
+extern "C" void ESP_HandleTouch(int touch_id, int x, int y, int touch_down) 
 {
     // Handle touch input for ESP button
     if (touch_down && ESP_IsPointInButton(x, y)) {
