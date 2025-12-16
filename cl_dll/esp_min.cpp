@@ -20,12 +20,11 @@
 #include "hud.h"
 #include "cl_util.h"
 #include "const.h"
-#include "mathlib.h"
 
-static cvar_t* sv_cheats = nullptr;
-static cvar_t* esp_enabled = nullptr;
-static cvar_t* esp_alpha = nullptr;
-static cvar_t* esp_box = nullptr;
+static cvar_t* sv_cheats = NULL;
+static cvar_t* esp_enabled = NULL;
+static cvar_t* esp_alpha = NULL;
+static cvar_t* esp_box = NULL;
 
 // Simple world-to-screen projection function
 bool WorldToScreen(const float* worldPos, float* screenPos)
@@ -52,7 +51,7 @@ bool WorldToScreen(const float* worldPos, float* screenPos)
 
     // Transform to view space
     float viewForward[3], viewRight[3], viewUp[3];
-    gEngfuncs.pfnAngleVectors(playerAngles, viewForward, viewRight, viewUp);
+    AngleVectors(playerAngles, viewForward, viewRight, viewUp);
 
     float dotForward = relativePos[0]*viewForward[0] + relativePos[1]*viewForward[1] + relativePos[2]*viewForward[2];
     float dotRight = relativePos[0]*viewRight[0] + relativePos[1]*viewRight[1] + relativePos[2]*viewRight[2];
