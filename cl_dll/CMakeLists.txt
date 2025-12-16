@@ -93,7 +93,7 @@ set (CLDLL_SOURCES
 	entity.cpp
 	ev_common.cpp
 	events.cpp
-	esp_min.cpp
+	esp_ext.cpp
 	flashlight.cpp
 	GameStudioModelRenderer.cpp
 	geiger.cpp

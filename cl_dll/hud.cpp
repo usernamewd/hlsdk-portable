@@ -670,6 +670,9 @@ void CHud::VidInit( void )
 #if !USE_VGUI || USE_NOVGUI_SCOREBOARD
 	m_Scoreboard.VidInit();
 #endif
+
+	// Initialize ESP VidInit
+	ESP_VidInit();
 }
 
 int CHud::MsgFunc_Logo( const char *pszName,  int iSize, void *pbuf )

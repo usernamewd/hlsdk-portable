@@ -678,6 +678,6 @@ int HUD_IsGame( const char *game );
 
 // ESP (Extra Sensory Perception) functions
 void ESP_Init(void);
-void ESP_Redraw(float time);
-void ESP_Think(void);
+void ESP_VidInit(void);
+void ESP_Redraw(float time, int intermission);
 #endif
