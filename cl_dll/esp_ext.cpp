@@ -21,6 +21,8 @@
 #include "cl_util.h"
 #include "triangleapi.h"
 #include "com_model.h"
+#include "event_api.h"
+#include "pm_defs.h"
 #include <cstdio>
 #include <cstring>
 #include <cmath>
@@ -107,7 +109,7 @@ static bool HasLineOfSight(const Vector& src, const Vector& dst)
     gEngfuncs.pEventAPI->EV_PushPMStates();
     gEngfuncs.pEventAPI->EV_SetSolidPlayers(-1);
     gEngfuncs.pEventAPI->EV_SetTraceHull(2); // standing hull
-    gEngfuncs.pEventAPI->EV_PlayerTrace(src, dst, PMNORMAL, -1, &tr);
+    gEngfuncs.pEventAPI->EV_PlayerTrace(src, dst, PM_NORMAL, -1, &tr);
     gEngfuncs.pEventAPI->EV_PopPMStates();
     return tr.fraction >= 1.0f;
 }
@@ -169,7 +171,8 @@ public:
         cl_entity_t* local = gEngfuncs.GetLocalPlayer();
         if (!local) return;
 
-        const Vector eye = local->origin + local->view_ofs;
+        // Use player origin with typical eye height offset (17 units up)
+        const Vector eye = local->origin + Vector(0, 0, 17);
 
         for (int i = 1; i < 2048; ++i)
         {
@@ -187,7 +190,8 @@ public:
             // BBox preference: use curstate mins/maxs; fallback to human-sized box
             Vector mins = ent->curstate.mins;
             Vector maxs = ent->curstate.maxs;
-            if (mins == Vector(0,0,0) && maxs == Vector(0,0,0))
+            if (mins.x == 0 && mins.y == 0 && mins.z == 0 && 
+                maxs.x == 0 && maxs.y == 0 && maxs.z == 0)
             {
                 mins = Vector(-12, -12, 0);
                 maxs = Vector(12, 12, 72);
