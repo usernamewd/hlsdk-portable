@@ -238,20 +238,28 @@ public:
     {
         if (intermission) return;
         
-        // Always draw test indicators if initialized
-        static float last_test_time = 0.0f;
-        if (m_initialized && time - last_test_time > 0.5f)
-        {
-            // Force a visible test box to verify rendering works
-            ESP_DrawTestBox(ScreenWidth - 100, 10, 90, 20, 255, 255, 0, 255);
-            gEngfuncs.pfnDrawSetTextColor(0, 0, 0);
-            gEngfuncs.pfnDrawConsoleString(ScreenWidth - 95, 12, const_cast<char*>("TEST"));
-            last_test_time = time;
-        }
-        
-        // Draw test button
+        // Draw test button first
         if (m_initialized) {
             DrawESPButton();
+        }
+
+        // Always draw a persistent test indicator when ESP is initialized
+        // This helps verify that ESP rendering is working
+        if (m_initialized) {
+            // Draw a persistent green indicator in top-left corner
+            int test_x = 10;
+            int test_y = 10;
+            int test_w = 20;
+            int test_h = 20;
+            
+            gEngfuncs.pfnFillRGBABlend(test_x, test_y, test_w, 2, 0, 255, 0, 255);  // Top
+            gEngfuncs.pfnFillRGBABlend(test_x, test_y + test_h - 2, test_w, 2, 0, 255, 0, 255);  // Bottom
+            gEngfuncs.pfnFillRGBABlend(test_x, test_y, 2, test_h, 0, 255, 0, 255);  // Left
+            gEngfuncs.pfnFillRGBABlend(test_x + test_w - 2, test_y, 2, test_h, 0, 255, 0, 255);  // Right
+            
+            // Draw status text
+            gEngfuncs.pfnDrawSetTextColor(0, 0, 0);
+            gEngfuncs.pfnDrawConsoleString(test_x, test_y + 30, const_cast<char*>("ESP READY"));
         }
 
         // sv_cheats gate: if not set, hard suppress rendering
@@ -384,30 +392,20 @@ public:
             #endif
         }
         
-        // Always draw a test indicator for Android to verify ESP is working
-        #ifdef ANDROID
-        if (cl_esp.value >= 1.0f)
+        // Draw ESP status indicator when ESP is active
+        if (cl_esp.value >= 1.0f && m_initialized)
         {
-            // Draw a small green indicator in top-left corner
-            int test_x = 10;
-            int test_y = 10;
-            int test_w = 20;
-            int test_h = 20;
+            // Draw ESP active status indicator
+            int status_x = 35;  // Position next to the green indicator
+            int status_y = 10;
             
-            gEngfuncs.pfnFillRGBABlend(test_x, test_y, test_w, 2, 0, 255, 0, 255);  // Top
-            gEngfuncs.pfnFillRGBABlend(test_x, test_y + test_h - 2, test_w, 2, 0, 255, 0, 255);  // Bottom
-            gEngfuncs.pfnFillRGBABlend(test_x, test_y, 2, test_h, 0, 255, 0, 255);  // Left
-            gEngfuncs.pfnFillRGBABlend(test_x + test_w - 2, test_y, 2, test_h, 0, 255, 0, 255);  // Right
-            
-            // Draw status text
             gEngfuncs.pfnDrawSetTextColor(0, 0, 0);
             char status_buf[64];
             snprintf(status_buf, sizeof(status_buf), "ESP:%d", visible_entities);
-            gEngfuncs.pfnDrawConsoleString(test_x, test_y + 30, status_buf);
+            gEngfuncs.pfnDrawConsoleString(status_x, status_y + 15, status_buf);
         }
-        #endif
         
-        // If no entities were visible, draw a test rectangle to verify ESP is working
+        // If no entities were visible and ESP is active, draw a test rectangle to verify ESP is working
         if (visible_entities == 0 && cl_esp.value >= 1.0f)
         {
             // Draw a test rectangle in the center of the screen
