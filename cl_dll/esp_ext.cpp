@@ -42,7 +42,9 @@ static inline float clampf(float v, float lo, float hi) { return v < lo ? lo : (
 static bool WorldToScreenPx(const Vector& world, int& sx, int& sy)
 {
     float screen[3];
-    int behind = gEngfuncs.pTriAPI->WorldToScreen((const float*)&world, screen);
+    float world_array[3];
+    world.CopyToArray(world_array);
+    int behind = gEngfuncs.pTriAPI->WorldToScreen(world_array, screen);
     if (behind) return false; // behind camera
     
     float nx = screen[0];
@@ -110,11 +112,15 @@ static bool ComputeScreenBoxFromBBox(const Vector& org, const Vector& mins, cons
 static bool HasLineOfSight(const Vector& src, const Vector& dst)
 {
     pmtrace_t tr;
+    float src_array[3], dst_array[3];
+    src.CopyToArray(src_array);
+    dst.CopyToArray(dst_array);
+    
     gEngfuncs.pEventAPI->EV_SetUpPlayerPrediction(false, true);
     gEngfuncs.pEventAPI->EV_PushPMStates();
     gEngfuncs.pEventAPI->EV_SetSolidPlayers(-1);
     gEngfuncs.pEventAPI->EV_SetTraceHull(2); // standing hull
-    gEngfuncs.pEventAPI->EV_PlayerTrace((float*)src, (float*)dst, PM_NORMAL, -1, &tr);
+    gEngfuncs.pEventAPI->EV_PlayerTrace(src_array, dst_array, PM_NORMAL, -1, &tr);
     gEngfuncs.pEventAPI->EV_PopPMStates();
     return tr.fraction >= 1.0f;
 }
