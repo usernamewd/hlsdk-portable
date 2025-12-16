@@ -27,6 +27,11 @@
 #include <cstring>
 #include <cmath>
 
+// Define ANDROID if building for Android
+#if defined(__ANDROID__) || defined(ANDROID)
+#define ANDROID 1
+#endif
+
 static cvar_t cl_esp          = { "cl_esp",          "0",  FCVAR_ARCHIVE };
 static cvar_t cl_esp_rate     = { "cl_esp_rate",     "30", FCVAR_ARCHIVE };
 static cvar_t cl_esp_pad      = { "cl_esp_pad",      "6",  FCVAR_ARCHIVE };
@@ -156,7 +161,11 @@ public:
         gEngfuncs.pfnRegisterVariable(cl_esp_labels.name,   cl_esp_labels.string,   cl_esp_labels.flags);
         gEngfuncs.pfnRegisterVariable(cl_esp_scientists.name, cl_esp_scientists.string, cl_esp_scientists.flags);
         
+        #ifdef ANDROID
+        gEngfuncs.Con_DPrintf("ESP System initialized for ANDROID - Use 'sv_cheats 1; cl_esp 1' to enable\n");
+        #else
         gEngfuncs.Con_DPrintf("ESP System initialized - Use 'sv_cheats 1; cl_esp 1' to enable\n");
+        #endif
     }
 
     void VidInit() {}
@@ -185,6 +194,21 @@ public:
 
         cl_entity_t* local = gEngfuncs.GetLocalPlayer();
         if (!local) return;
+        
+        // Android-specific: Draw a box around the player to test rendering
+        #ifdef ANDROID
+        if (cl_esp.value >= 1.0f && local)
+        {
+            int px = (int)((1.0f + 0) * (ScreenWidth / 2.0f));
+            int py = (int)((1.0f - 0) * (ScreenHeight / 2.0f));
+            int player_box_size = 30;
+            
+            gEngfuncs.pfnFillRGBABlend(px - player_box_size/2, py - player_box_size/2, player_box_size, 2, 0, 255, 255, 255);  // Top
+            gEngfuncs.pfnFillRGBABlend(px - player_box_size/2, py + player_box_size/2 - 2, player_box_size, 2, 0, 255, 255, 255);  // Bottom
+            gEngfuncs.pfnFillRGBABlend(px - player_box_size/2, py - player_box_size/2, 2, player_box_size, 0, 255, 255, 255);  // Left
+            gEngfuncs.pfnFillRGBABlend(px + player_box_size/2 - 2, py - player_box_size/2, 2, player_box_size, 0, 255, 255, 255);  // Right
+        }
+        #endif
 
         // Use player origin with typical eye height offset (17 units up)
         const Vector eye = local->origin + Vector(0, 0, 17);
@@ -199,15 +223,24 @@ public:
             
             processed_entities++;
             
-            // Skip entities without a model, but still process them for debugging
+            // Android-specific: Be more permissive with entity filtering
             bool hasModel = ent->model != NULL;
             if (hasModel && onlySci && !IsScientistModel(ent->model->name)) continue;
 
             // Skip local player
             if (ent == local) continue;
 
-            // Check if entity has meaningful origin
-            if (ent->origin.x == 0 && ent->origin.y == 0 && ent->origin.z == 0) continue;
+            // Android-specific: More lenient origin checking
+            bool hasValidOrigin = (ent->origin.x != 0 || ent->origin.y != 0 || ent->origin.z != 0);
+            
+            #ifdef ANDROID
+            // On Android, also check if entity has any health or other properties
+            if (!hasValidOrigin) {
+                hasValidOrigin = (ent->curstate.health > 0 || ent->curstate.solid != 0 || ent->curstate.movetype != 0);
+            }
+            #endif
+            
+            if (!hasValidOrigin) continue;
 
             // LOS filter
             if (losOnly && !HasLineOfSight(eye, ent->origin))
@@ -252,12 +285,47 @@ public:
         
         // Debug output every 2 seconds
         static float last_debug_time = 0.0f;
+        static bool esp_was_active = false;
+        
         if (time - last_debug_time > 2.0f)
         {
             gEngfuncs.Con_DPrintf("ESP Debug: Processed %d entities, %d visible (sv_cheats=%.1f, cl_esp=%.1f)\n", 
                 processed_entities, visible_entities, cheats, cl_esp.value);
             last_debug_time = time;
+            
+            // Android-specific debugging
+            #ifdef ANDROID
+            gEngfuncs.Con_DPrintf("ANDROID ESP: Screen size %dx%d, local player: %p\n", 
+                ScreenWidth, ScreenHeight, local);
+            if (local) {
+                gEngfuncs.Con_DPrintf("ANDROID ESP: Local origin: %.1f,%.1f,%.1f\n", 
+                    local->origin.x, local->origin.y, local->origin.z);
+            }
+            #endif
         }
+        
+        // Always draw a test indicator for Android to verify ESP is working
+        #ifdef ANDROID
+        if (cl_esp.value >= 1.0f)
+        {
+            // Draw a small green indicator in top-left corner
+            int test_x = 10;
+            int test_y = 10;
+            int test_w = 20;
+            int test_h = 20;
+            
+            gEngfuncs.pfnFillRGBABlend(test_x, test_y, test_w, 2, 0, 255, 0, 255);  // Top
+            gEngfuncs.pfnFillRGBABlend(test_x, test_y + test_h - 2, test_w, 2, 0, 255, 0, 255);  // Bottom
+            gEngfuncs.pfnFillRGBABlend(test_x, test_y, 2, test_h, 0, 255, 0, 255);  // Left
+            gEngfuncs.pfnFillRGBABlend(test_x + test_w - 2, test_y, 2, test_h, 0, 255, 0, 255);  // Right
+            
+            // Draw status text
+            gEngfuncs.pfnDrawSetTextColor(0, 0, 0);
+            char status_buf[64];
+            snprintf(status_buf, sizeof(status_buf), "ESP:%d", visible_entities);
+            gEngfuncs.pfnDrawConsoleString(test_x, test_y + 30, status_buf);
+        }
+        #endif
         
         // If no entities were visible, draw a test rectangle to verify ESP is working
         if (visible_entities == 0 && cl_esp.value >= 1.0f)
