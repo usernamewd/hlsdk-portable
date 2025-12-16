@@ -155,6 +155,8 @@ public:
         gEngfuncs.pfnRegisterVariable(cl_esp_los.name,      cl_esp_los.string,      cl_esp_los.flags);
         gEngfuncs.pfnRegisterVariable(cl_esp_labels.name,   cl_esp_labels.string,   cl_esp_labels.flags);
         gEngfuncs.pfnRegisterVariable(cl_esp_scientists.name, cl_esp_scientists.string, cl_esp_scientists.flags);
+        
+        gEngfuncs.Con_DPrintf("ESP System initialized - Use 'sv_cheats 1; cl_esp 1' to enable\n");
     }
 
     void VidInit() {}
@@ -187,14 +189,25 @@ public:
         // Use player origin with typical eye height offset (17 units up)
         const Vector eye = local->origin + Vector(0, 0, 17);
 
+        int processed_entities = 0;
+        int visible_entities = 0;
+        
         for (int i = 1; i < 2048; ++i)
         {
             cl_entity_t* ent = gEngfuncs.GetEntityByIndex(i);
-            if (!ent || !ent->model) continue;
-            if (onlySci && !IsScientistModel(ent->model->name)) continue;
+            if (!ent) continue;
+            
+            processed_entities++;
+            
+            // Skip entities without a model, but still process them for debugging
+            bool hasModel = ent->model != NULL;
+            if (hasModel && onlySci && !IsScientistModel(ent->model->name)) continue;
 
             // Skip local player
             if (ent == local) continue;
+
+            // Check if entity has meaningful origin
+            if (ent->origin.x == 0 && ent->origin.y == 0 && ent->origin.z == 0) continue;
 
             // LOS filter
             if (losOnly && !HasLineOfSight(eye, ent->origin))
@@ -214,6 +227,8 @@ public:
             if (!ComputeScreenBoxFromBBox(ent->origin, mins, maxs, pad, x1, y1, x2, y2))
                 continue;
 
+            visible_entities++;
+
             // Health tint: red base, add green component if health is high
             const int health = ent->curstate.health; // may be 0 for some ents
             int rr = 255, gg = 0, bb = 0;
@@ -227,12 +242,40 @@ public:
             if (showLabels)
             {
                 char buf[64];
-                const char* name = ent->model->name ? ent->model->name : "entity";
+                const char* name = hasModel && ent->model->name ? ent->model->name : "entity";
                 int labelX = x1;
                 int labelY = y1 - 10;
                 snprintf(buf, sizeof(buf), "%s  hp:%d", name, health);
                 DrawLabel(labelX, labelY, buf, 255, 255, 255, 255);
             }
+        }
+        
+        // Debug output every 2 seconds
+        static float last_debug_time = 0.0f;
+        if (time - last_debug_time > 2.0f)
+        {
+            gEngfuncs.Con_DPrintf("ESP Debug: Processed %d entities, %d visible (sv_cheats=%.1f, cl_esp=%.1f)\n", 
+                processed_entities, visible_entities, cheats, cl_esp.value);
+            last_debug_time = time;
+        }
+        
+        // If no entities were visible, draw a test rectangle to verify ESP is working
+        if (visible_entities == 0 && cl_esp.value >= 1.0f)
+        {
+            // Draw a test rectangle in the center of the screen
+            int test_x = ScreenWidth / 2 - 50;
+            int test_y = ScreenHeight / 2 - 25;
+            int test_w = 100;
+            int test_h = 50;
+            
+            gEngfuncs.pfnFillRGBABlend(test_x, test_y, test_w, 2, 255, 0, 0, 255);  // Top
+            gEngfuncs.pfnFillRGBABlend(test_x, test_y + test_h - 2, test_w, 2, 255, 0, 0, 255);  // Bottom
+            gEngfuncs.pfnFillRGBABlend(test_x, test_y, 2, test_h, 255, 0, 0, 255);  // Left
+            gEngfuncs.pfnFillRGBABlend(test_x + test_w - 2, test_y, 2, test_h, 255, 0, 0, 255);  // Right
+            
+            // Draw test text
+            gEngfuncs.pfnDrawSetTextColor(0, 0, 0);
+            gEngfuncs.pfnDrawConsoleString(test_x + 5, test_y + 25, const_cast<char*>("ESP TEST"));
         }
     }
 
