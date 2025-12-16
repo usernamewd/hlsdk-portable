@@ -677,9 +677,15 @@ extern int g_iHudColor;
 int HUD_IsGame( const char *game );
 
 // ESP (Extra Sensory Perception) functions
-extern "C" void ESP_Init(void);
-extern "C" void ESP_VidInit(void);
-extern "C" void ESP_Redraw(float time, int intermission);
-extern "C" void ESP_HandleMouse(int mx, int my, int mouseDown);
-extern "C" void ESP_HandleTouch(int touch_id, int x, int y, int touch_down);
+#if defined(__ANDROID__) || defined(ANDROID)
+#define ESP_EXPORT __attribute__((visibility("default")))
+#else
+#define ESP_EXPORT
+#endif
+
+extern "C" ESP_EXPORT void ESP_Init(void);
+extern "C" ESP_EXPORT void ESP_VidInit(void);
+extern "C" ESP_EXPORT void ESP_Redraw(float time, int intermission);
+extern "C" ESP_EXPORT void ESP_HandleMouse(int mx, int my, int mouseDown);
+extern "C" ESP_EXPORT void ESP_HandleTouch(int touch_id, int x, int y, int touch_down);
 #endif

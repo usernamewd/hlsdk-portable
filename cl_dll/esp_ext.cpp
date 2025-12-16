@@ -434,11 +434,11 @@ private:
 // Global instance + hooks
 static CExtendedESP gESP;
 
-extern "C" void ESP_Init()         { gESP.Init(); }
-extern "C" void ESP_VidInit()      { gESP.VidInit(); }
-extern "C" void ESP_Redraw(float t, int intermission) { gESP.Redraw(t, intermission); }
-extern "C" void ESP_HandleMouse(int mx, int my, int mouseDown) { gESP.HandleMouseInput(mx, my, mouseDown); }
-extern "C" void ESP_HandleTouch(int touch_id, int x, int y, int touch_down) 
+extern "C" __attribute__((visibility("default"))) void ESP_Init()         { gESP.Init(); }
+extern "C" __attribute__((visibility("default"))) void ESP_VidInit()      { gESP.VidInit(); }
+extern "C" __attribute__((visibility("default"))) void ESP_Redraw(float t, int intermission) { gESP.Redraw(t, intermission); }
+extern "C" __attribute__((visibility("default"))) void ESP_HandleMouse(int mx, int my, int mouseDown) { gESP.HandleMouseInput(mx, my, mouseDown); }
+extern "C" __attribute__((visibility("default"))) void ESP_HandleTouch(int touch_id, int x, int y, int touch_down) 
 {
     // Handle touch input for ESP button
     if (touch_down && ESP_IsPointInButton(x, y)) {
