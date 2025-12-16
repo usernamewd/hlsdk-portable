@@ -41,9 +41,14 @@ static inline float clampf(float v, float lo, float hi) { return v < lo ? lo : (
 
 static bool WorldToScreenPx(const Vector& world, int& sx, int& sy)
 {
-    float nx, ny, nz;
-    int behind = gEngfuncs.pTriAPI->WorldToScreen((float*)&world, &nx, &ny, &nz);
+    float screen[3];
+    int behind = gEngfuncs.pTriAPI->WorldToScreen((const float*)&world, screen);
     if (behind) return false; // behind camera
+    
+    float nx = screen[0];
+    float ny = screen[1];
+    // float nz = screen[2]; // not needed for 2D projection
+    
     sx = (int)((1.0f + nx) * (ScreenWidth / 2.0f));
     sy = (int)((1.0f - ny) * (ScreenHeight / 2.0f));
     return (sx >= 0 && sx < ScreenWidth && sy >= 0 && sy < ScreenHeight);
@@ -109,7 +114,7 @@ static bool HasLineOfSight(const Vector& src, const Vector& dst)
     gEngfuncs.pEventAPI->EV_PushPMStates();
     gEngfuncs.pEventAPI->EV_SetSolidPlayers(-1);
     gEngfuncs.pEventAPI->EV_SetTraceHull(2); // standing hull
-    gEngfuncs.pEventAPI->EV_PlayerTrace(src, dst, PM_NORMAL, -1, &tr);
+    gEngfuncs.pEventAPI->EV_PlayerTrace((float*)src, (float*)dst, PM_NORMAL, -1, &tr);
     gEngfuncs.pEventAPI->EV_PopPMStates();
     return tr.fraction >= 1.0f;
 }
@@ -132,6 +137,8 @@ static void DrawLabel(int x, int y, const char* txt, int r, int g, int b, int a)
 class CExtendedESP
 {
 public:
+    CExtendedESP() : m_next(0.0f) {}
+    
     void Init()
     {
         gEngfuncs.pfnRegisterVariable(cl_esp.name,          cl_esp.string,          cl_esp.flags);
@@ -224,7 +231,7 @@ public:
     }
 
 private:
-    float m_next = 0.0f;
+    float m_next;
 };
 
 // Global instance + hooks
