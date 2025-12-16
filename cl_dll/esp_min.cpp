@@ -73,7 +73,7 @@ void ESP_Init()
 {
     // Register cvars - ESP should only work when sv_cheats is enabled
     sv_cheats = gEngfuncs.pfnGetCvarPointer("sv_cheats");
-    esp_enabled = CVAR_CREATE("esp_enabled", "0", FCVAR_ARCHIVE);
+    esp_enabled = CVAR_CREATE("cl_esp", "0", FCVAR_ARCHIVE);
     esp_alpha = CVAR_CREATE("esp_alpha", "180", FCVAR_ARCHIVE);
     esp_box = CVAR_CREATE("esp_box", "1", FCVAR_ARCHIVE);
 }
@@ -83,10 +83,22 @@ void ESP_Redraw(float time)
     // Only render ESP when sv_cheats is enabled
     if (!sv_cheats || sv_cheats->value <= 0.0f)
         return;
-    
+
     // Only render ESP when enabled by cvar
     if (!esp_enabled || esp_enabled->value <= 0.0f)
         return;
+
+    // ESP is active - debug message
+    static bool esp_debug_shown = false;
+    if (!esp_debug_shown && esp_enabled->value > 0.0f)
+    {
+        gEngfuncs.Con_DPrintf("ESP enabled - drawing entity information\n");
+        esp_debug_shown = true;
+    }
+    if (esp_enabled->value <= 0.0f)
+    {
+        esp_debug_shown = false;
+    }
 
     cl_entity_t* player = gEngfuncs.GetLocalPlayer();
     if (!player)
@@ -103,9 +115,13 @@ void ESP_Redraw(float time)
 
     int r = 255, g = 0, b = 0; // Default red color for enemies
     int alpha = (int)esp_alpha->value;
+    int entity_count = 0;
+    int visible_entities = 0;
 
     // Get all entities
     for (int i = 1; i < 1024; i++)
+    {
+        entity_count++;
     {
         cl_entity_t* ent = gEngfuncs.GetEntityByIndex(i);
         if (!ent || !ent->model)
@@ -178,6 +194,8 @@ void ESP_Redraw(float time)
         // Only draw if at least some corners are visible
         if (visible_corners >= 4)
         {
+            visible_entities++;
+
             // Calculate min/max screen coordinates
             int min_x = (int)screen_corners[0][0];
             int min_y = (int)screen_corners[0][1];
@@ -222,6 +240,12 @@ void ESP_Redraw(float time)
             // Draw the text
             gHUD.DrawHudString(text_x, text_y, text_x + text_width + 4, entity_name, 255, 255, 255);
         }
+    }
+
+    // Debug output
+    if (visible_entities > 0)
+    {
+        gEngfuncs.Con_DPrintf("ESP: Processed %d entities, found %d visible\n", entity_count, visible_entities);
     }
 }
 
