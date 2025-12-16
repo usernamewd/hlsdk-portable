@@ -680,4 +680,6 @@ int HUD_IsGame( const char *game );
 void ESP_Init(void);
 void ESP_VidInit(void);
 void ESP_Redraw(float time, int intermission);
+void ESP_HandleMouse(int mx, int my, bool mouseDown);
+void ESP_HandleTouch(int touch_id, int x, int y, bool touch_down);
 #endif

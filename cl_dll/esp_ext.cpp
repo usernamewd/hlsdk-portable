@@ -41,8 +41,59 @@ static cvar_t cl_esp_los      = { "cl_esp_los",      "0",  FCVAR_ARCHIVE };
 static cvar_t cl_esp_labels   = { "cl_esp_labels",   "1",  FCVAR_ARCHIVE };
 static cvar_t cl_esp_scientists = { "cl_esp_scientists", "0", FCVAR_ARCHIVE };
 
+// Test button functionality
+static bool gESPButtonVisible = true;
+static int gESPButtonX = 10;
+static int gESPButtonY = 50;
+static int gESPButtonWidth = 80;
+static int gESPButtonHeight = 30;
+
 static inline int clampi(int v, int lo, int hi) { return v < lo ? lo : (v > hi ? hi : v); }
 static inline float clampf(float v, float lo, float hi) { return v < lo ? lo : (v > hi ? hi : v); }
+
+// ESP Test Button Functions
+static void ESP_Toggle()
+{
+    if (cl_esp.value >= 1.0f) {
+        gEngfuncs.pfnClientCmd("cl_esp 0\n");
+    } else {
+        gEngfuncs.pfnClientCmd("cl_esp 1\n");
+    }
+}
+
+static bool ESP_IsPointInButton(int x, int y)
+{
+    return (x >= gESPButtonX && x <= gESPButtonX + gESPButtonWidth &&
+            y >= gESPButtonY && y <= gESPButtonY + gESPButtonHeight);
+}
+
+static void DrawESPButton()
+{
+    // Draw button background
+    int buttonColorR = cl_esp.value >= 1.0f ? 0 : 255;
+    int buttonColorG = cl_esp.value >= 1.0f ? 255 : 0;
+    int buttonColorB = 0;
+    
+    gEngfuncs.pfnFillRGBABlend(gESPButtonX, gESPButtonY, gESPButtonWidth, gESPButtonHeight, 
+                               buttonColorR, buttonColorG, buttonColorB, 200);
+    
+    // Draw button border
+    gEngfuncs.pfnFillRGBABlend(gESPButtonX, gESPButtonY, gESPButtonWidth, 2, 255, 255, 255, 255);
+    gEngfuncs.pfnFillRGBABlend(gESPButtonX, gESPButtonY + gESPButtonHeight - 2, gESPButtonWidth, 2, 255, 255, 255, 255);
+    gEngfuncs.pfnFillRGBABlend(gESPButtonX, gESPButtonY, 2, gESPButtonHeight, 255, 255, 255, 255);
+    gEngfuncs.pfnFillRGBABlend(gESPButtonX + gESPButtonWidth - 2, gESPButtonY, 2, gESPButtonHeight, 255, 255, 255, 255);
+    
+    // Draw button text
+    gEngfuncs.pfnDrawSetTextColor(0, 0, 0);
+    const char* buttonText = cl_esp.value >= 1.0f ? "ESP ON" : "ESP OFF";
+    gEngfuncs.pfnDrawConsoleString(gESPButtonX + 5, gESPButtonY + 12, const_cast<char*>(buttonText));
+}
+
+// Simple test rendering function
+static void ESP_DrawTestBox(int x, int y, int w, int h, int r, int g, int b, int a)
+{
+    gEngfuncs.pfnFillRGBABlend(x, y, w, h, r, g, b, a);
+}
 
 static bool WorldToScreenPx(const Vector& world, int& sx, int& sy)
 {
@@ -148,7 +199,7 @@ static void DrawLabel(int x, int y, const char* txt, int r, int g, int b, int a)
 class CExtendedESP
 {
 public:
-    CExtendedESP() : m_next(0.0f) {}
+    CExtendedESP() : m_next(0.0f), m_initialized(false) {}
     
     void Init()
     {
@@ -166,13 +217,42 @@ public:
         #else
         gEngfuncs.Con_DPrintf("ESP System initialized - Use 'sv_cheats 1; cl_esp 1' to enable\n");
         #endif
+        
+        gEngfuncs.Con_DPrintf("ESP Test Button available - click in top-left area to toggle\n");
+        m_initialized = true;
     }
 
     void VidInit() {}
+    
+    void HandleMouseInput(int mx, int my, bool mouseDown)
+    {
+        if (!m_initialized || !mouseDown) return;
+        
+        if (ESP_IsPointInButton(mx, my)) {
+            ESP_Toggle();
+            gEngfuncs.Con_DPrintf("ESP Test Button clicked! New value: %.1f\n", cl_esp.value);
+        }
+    }
 
     void Redraw(float time, int intermission)
     {
         if (intermission) return;
+        
+        // Always draw test indicators if initialized
+        static float last_test_time = 0.0f;
+        if (m_initialized && time - last_test_time > 0.5f)
+        {
+            // Force a visible test box to verify rendering works
+            ESP_DrawTestBox(ScreenWidth - 100, 10, 90, 20, 255, 255, 0, 255);
+            gEngfuncs.pfnDrawSetTextColor(0, 0, 0);
+            gEngfuncs.pfnDrawConsoleString(ScreenWidth - 95, 12, const_cast<char*>("TEST"));
+            last_test_time = time;
+        }
+        
+        // Draw test button
+        if (m_initialized) {
+            DrawESPButton();
+        }
 
         // sv_cheats gate: if not set, hard suppress rendering
         const float cheats = gEngfuncs.pfnGetCvarFloat("sv_cheats");
@@ -349,11 +429,21 @@ public:
 
 private:
     float m_next;
+    bool m_initialized;
 };
 
 // Global instance + hooks
 static CExtendedESP gESP;
 
-void ESP_Init()    { gESP.Init(); }
-void ESP_VidInit() { gESP.VidInit(); }
+void ESP_Init()         { gESP.Init(); }
+void ESP_VidInit()      { gESP.VidInit(); }
 void ESP_Redraw(float t, int intermission) { gESP.Redraw(t, intermission); }
+void ESP_HandleMouse(int mx, int my, bool mouseDown) { gESP.HandleMouseInput(mx, my, mouseDown); }
+void ESP_HandleTouch(int touch_id, int x, int y, bool touch_down) 
+{
+    // Handle touch input for ESP button
+    if (touch_down && ESP_IsPointInButton(x, y)) {
+        ESP_Toggle();
+        gEngfuncs.Con_DPrintf("ESP Touch button clicked! New value: %.1f\n", cl_esp.value);
+    }
+}
