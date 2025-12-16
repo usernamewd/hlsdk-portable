@@ -434,10 +434,10 @@ private:
 // Global instance + hooks
 static CExtendedESP gESP;
 
-void ESP_Init()         { gESP.Init(); }
-void ESP_VidInit()      { gESP.VidInit(); }
-void ESP_Redraw(float t, int intermission) { gESP.Redraw(t, intermission); }
-void ESP_HandleMouse(int mx, int my, bool mouseDown) { gESP.HandleMouseInput(mx, my, mouseDown); }
+extern "C" void ESP_Init()         { gESP.Init(); }
+extern "C" void ESP_VidInit()      { gESP.VidInit(); }
+extern "C" void ESP_Redraw(float t, int intermission) { gESP.Redraw(t, intermission); }
+extern "C" void ESP_HandleMouse(int mx, int my, int mouseDown) { gESP.HandleMouseInput(mx, my, mouseDown); }
 extern "C" void ESP_HandleTouch(int touch_id, int x, int y, int touch_down) 
 {
     // Handle touch input for ESP button

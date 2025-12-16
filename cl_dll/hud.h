@@ -677,9 +677,9 @@ extern int g_iHudColor;
 int HUD_IsGame( const char *game );
 
 // ESP (Extra Sensory Perception) functions
-void ESP_Init(void);
-void ESP_VidInit(void);
-void ESP_Redraw(float time, int intermission);
-void ESP_HandleMouse(int mx, int my, bool mouseDown);
-void ESP_HandleTouch(int touch_id, int x, int y, bool touch_down);
+extern "C" void ESP_Init(void);
+extern "C" void ESP_VidInit(void);
+extern "C" void ESP_Redraw(float time, int intermission);
+extern "C" void ESP_HandleMouse(int mx, int my, int mouseDown);
+extern "C" void ESP_HandleTouch(int touch_id, int x, int y, int touch_down);
 #endif
