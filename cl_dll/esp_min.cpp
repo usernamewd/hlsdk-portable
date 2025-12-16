@@ -122,7 +122,6 @@ void ESP_Redraw(float time)
     for (int i = 1; i < 1024; i++)
     {
         entity_count++;
-    {
         cl_entity_t* ent = gEngfuncs.GetEntityByIndex(i);
         if (!ent || !ent->model)
             continue;
